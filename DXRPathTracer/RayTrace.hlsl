@@ -152,7 +152,7 @@ static float3 PathTrace(in MeshVertex hitSurface, in Material material, in uint 
     if(AppSettings.EnableNormalMaps)
     {
         // Sample the normal map, and convert the normal to world space
-        Texture2D normalMap = Tex2DTable[material.Normal];
+        Texture2D normalMap = Tex2DTable[NonUniformResourceIndex(material.Normal)];
 
         float3 normalTS;
         normalTS.xy = normalMap.SampleLevel(MeshSampler, hitSurface.UV, 0.0f).xy * 2.0f - 1.0f;
@@ -165,11 +165,11 @@ static float3 PathTrace(in MeshVertex hitSurface, in Material material, in uint 
     float3 baseColor = 1.0f;
     if(AppSettings.EnableAlbedoMaps)
     {
-        Texture2D albedoMap = Tex2DTable[material.Albedo];
+        Texture2D albedoMap = Tex2DTable[NonUniformResourceIndex(material.Albedo)];
         baseColor = albedoMap.SampleLevel(MeshSampler, hitSurface.UV, 0.0f).xyz;
     }
 
-    Texture2D metallicMap = Tex2DTable[material.Metallic];
+    Texture2D metallicMap = Tex2DTable[NonUniformResourceIndex(material.Metallic)];
     const float metallic = metallicMap.SampleLevel(MeshSampler, hitSurface.UV, 0.0f).x;
 
     const bool enableDiffuse = metallic < 1.0f;
@@ -177,14 +177,14 @@ static float3 PathTrace(in MeshVertex hitSurface, in Material material, in uint 
     if(enableDiffuse == false && enableSpecular == false)
         return 0.0f;
 
-    Texture2D roughnessMap = Tex2DTable[material.Roughness];
+    Texture2D roughnessMap = Tex2DTable[NonUniformResourceIndex(material.Roughness)];
     const float sqrtRoughness = roughnessMap.SampleLevel(MeshSampler, hitSurface.UV, 0.0f).x;
 
     const float3 diffuseAlbedo = lerp(baseColor, 0.0f, metallic);
     const float3 specularAlbedo = lerp(0.03f, baseColor, metallic) * (enableSpecular ? 1.0f : 0.0f);
     const float roughness = sqrtRoughness * sqrtRoughness;
 
-    Texture2D emissiveMap = Tex2DTable[material.Emissive];
+    Texture2D emissiveMap = Tex2DTable[NonUniformResourceIndex(material.Emissive)];
     float3 radiance = emissiveMap.SampleLevel(MeshSampler, hitSurface.UV, 0.0f).xyz;
 
     if(AppSettings.EnableSun)
@@ -366,4 +366,52 @@ void ShadowHitShader(inout ShadowPayload payload, in HitAttributes attr)
 void ShadowMissShader(inout ShadowPayload payload)
 {
     payload.Visibility = 1.0f;
+}
+
+bool IsAlphaGeometry(in HitAttributes attr)
+{
+    float3 barycentrics = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
+
+    StructuredBuffer<GeometryInfo> geoInfoBuffer = GeometryInfoBuffers[RayTraceCB.GeometryInfoBufferIdx];
+    const GeometryInfo geoInfo = geoInfoBuffer[HitCB.GeometryIdx];
+
+    StructuredBuffer<Material> materialBuffer = MaterialBuffers[RayTraceCB.MaterialBufferIdx];
+
+    const Material material = materialBuffer[geoInfo.MaterialIdx];
+
+    Texture2D OpacityMap = Tex2DTable[NonUniformResourceIndex(material.Opacity)];
+
+    StructuredBuffer<MeshVertex> vtxBuffer = VertexBuffers[RayTraceCB.VtxBufferIdx];
+    Buffer<uint> idxBuffer = BufferUintTable[RayTraceCB.IdxBufferIdx];
+
+    const uint primIdx = PrimitiveIndex();
+    const uint idx0 = idxBuffer[primIdx * 3 + geoInfo.IdxOffset + 0];
+    const uint idx1 = idxBuffer[primIdx * 3 + geoInfo.IdxOffset + 1];
+    const uint idx2 = idxBuffer[primIdx * 3 + geoInfo.IdxOffset + 2];
+
+    const MeshVertex vtx0 = vtxBuffer[idx0 + geoInfo.VtxOffset];
+    const MeshVertex vtx1 = vtxBuffer[idx1 + geoInfo.VtxOffset];
+    const MeshVertex vtx2 = vtxBuffer[idx2 + geoInfo.VtxOffset];
+
+    const MeshVertex hitSurface = BarycentricLerp(vtx0, vtx1, vtx2, barycentrics);
+
+    return (OpacityMap.SampleLevel(LinearSampler, hitSurface.UV, 0.0f).x < 0.35f);
+}
+
+[shader("anyhit")]
+void AnyHitColor(inout PrimaryPayload payload, in HitAttributes attr)
+{
+    if (IsAlphaGeometry(attr))
+    {
+        IgnoreHit();
+    }
+}
+
+[shader("anyhit")]
+void AnyHitShadow(inout ShadowPayload payload, in HitAttributes attr)
+{
+    if (IsAlphaGeometry(attr))
+    {
+        IgnoreHit();
+    }
 }

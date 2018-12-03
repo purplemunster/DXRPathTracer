@@ -727,6 +727,9 @@ void DXRPathTracer::InitRayTracing()
         rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
         DX12::CreateRootSignature(&rtHitGroupLocalRS, rootSignatureDesc);
+
+        // TEMP hack
+        DX12::CreateRootSignature(&rtEmptyLocalRS, rootSignatureDesc);
     }
 
     rtCurrCamera = camera;
@@ -749,6 +752,7 @@ void DXRPathTracer::CreateRayTracingPSOs()
         D3D12_HIT_GROUP_DESC hitDesc = { };
         hitDesc.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
         hitDesc.ClosestHitShaderImport = L"ClosestHitShader";
+        hitDesc.AnyHitShaderImport = L"AnyHitColor";
         hitDesc.HitGroupExport = L"HitGroup";
         builder.AddSubObject(hitDesc);
     }
@@ -758,6 +762,7 @@ void DXRPathTracer::CreateRayTracingPSOs()
         D3D12_HIT_GROUP_DESC hitDesc = { };
         hitDesc.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
         hitDesc.ClosestHitShaderImport = L"ShadowHitShader";
+        hitDesc.AnyHitShaderImport = L"AnyHitShadow";
         hitDesc.HitGroupExport = L"ShadowHitGroup";
         builder.AddSubObject(hitDesc);
     }
@@ -1411,7 +1416,7 @@ void DXRPathTracer::BuildRTAccelerationStructure()
         geometryDesc.Triangles.VertexCount = uint32(mesh.NumVertices());
         geometryDesc.Triangles.VertexBuffer.StartAddress = vtxBuffer.GPUAddress + mesh.VertexOffset() * vtxBuffer.Stride;
         geometryDesc.Triangles.VertexBuffer.StrideInBytes = vtxBuffer.Stride;
-        geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+        geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 
         GeometryInfo& geoInfo = geoInfoBufferData[meshIdx];
         geoInfo = { };

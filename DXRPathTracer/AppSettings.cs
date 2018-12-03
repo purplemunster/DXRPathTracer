@@ -76,7 +76,7 @@ public class Settings
     public class Scene
     {
         [UseAsShaderConstant(false)]
-        Scenes CurrentScene = Scenes.BoxTest;
+        Scenes CurrentScene = Scenes.SunTemple;
 
         [HelpText("Enable or disable deferred light rendering")]
         bool RenderLights = false;

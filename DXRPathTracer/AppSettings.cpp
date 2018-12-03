@@ -97,7 +97,7 @@ namespace AppSettings
         MSAAMode.Initialize("MSAAMode", "Anti Aliasing", "MSAA Mode", "MSAA mode to use for rendering", MSAAModes::MSAA4x, 3, MSAAModesLabels);
         Settings.AddSetting(&MSAAMode);
 
-        CurrentScene.Initialize("CurrentScene", "Scene", "Current Scene", "", Scenes::BoxTest, 3, ScenesLabels);
+        CurrentScene.Initialize("CurrentScene", "Scene", "Current Scene", "", Scenes::SunTemple, 3, ScenesLabels);
         Settings.AddSetting(&CurrentScene);
 
         RenderLights.Initialize("RenderLights", "Scene", "Render Lights", "Enable or disable deferred light rendering", false);
