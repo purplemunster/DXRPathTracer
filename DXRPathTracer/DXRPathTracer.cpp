@@ -964,16 +964,20 @@ void DXRPathTracer::Update(const Timer& timer)
     const Setting* settingsToCheck[] =
     {
         &AppSettings::SqrtNumSamples,
-        &AppSettings::EnableSun,
         &AppSettings::MaxPathLength,
         &AppSettings::EnableAlbedoMaps,
         &AppSettings::EnableNormalMaps,
+        &AppSettings::EnableDiffuse,
         &AppSettings::EnableSpecular,
+        &AppSettings::EnableDirect,
+        &AppSettings::EnableIndirect,
+        &AppSettings::EnableIndirectSpecular,
         &AppSettings::EnableSun,
         &AppSettings::SunSize,
         &AppSettings::SunDirection,
         &AppSettings::Turbidity,
         &AppSettings::GroundAlbedo,
+        &AppSettings::RoughnessScale,
     };
 
     for(const Setting* setting : settingsToCheck)

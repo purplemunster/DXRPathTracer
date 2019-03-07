@@ -15,8 +15,12 @@ struct AppSettings_Layout
     float BloomBlurSigma;
     bool EnableAlbedoMaps;
     bool EnableNormalMaps;
+    bool EnableDiffuse;
     bool EnableSpecular;
-    bool ShowLightCounts;
+    bool EnableDirect;
+    bool EnableIndirect;
+    bool EnableIndirectSpecular;
+    float RoughnessScale;
 };
 
 ConstantBuffer<AppSettings_Layout> AppSettings : register(b12);

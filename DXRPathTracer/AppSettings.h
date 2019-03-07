@@ -74,8 +74,12 @@ namespace AppSettings
     extern BoolSetting EnableVSync;
     extern BoolSetting EnableAlbedoMaps;
     extern BoolSetting EnableNormalMaps;
+    extern BoolSetting EnableDiffuse;
     extern BoolSetting EnableSpecular;
-    extern BoolSetting ShowLightCounts;
+    extern BoolSetting EnableDirect;
+    extern BoolSetting EnableIndirect;
+    extern BoolSetting EnableIndirectSpecular;
+    extern FloatSetting RoughnessScale;
     extern BoolSetting AlwaysResetPathTrace;
     extern BoolSetting ShowProgressBar;
 
@@ -96,8 +100,12 @@ namespace AppSettings
         float BloomBlurSigma;
         bool32 EnableAlbedoMaps;
         bool32 EnableNormalMaps;
+        bool32 EnableDiffuse;
         bool32 EnableSpecular;
-        bool32 ShowLightCounts;
+        bool32 EnableDirect;
+        bool32 EnableIndirect;
+        bool32 EnableIndirectSpecular;
+        float RoughnessScale;
     };
 
     extern ConstantBuffer CBuffer;

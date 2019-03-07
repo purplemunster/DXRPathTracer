@@ -50,8 +50,12 @@ namespace AppSettings
     BoolSetting EnableVSync;
     BoolSetting EnableAlbedoMaps;
     BoolSetting EnableNormalMaps;
+    BoolSetting EnableDiffuse;
     BoolSetting EnableSpecular;
-    BoolSetting ShowLightCounts;
+    BoolSetting EnableDirect;
+    BoolSetting EnableIndirect;
+    BoolSetting EnableIndirectSpecular;
+    FloatSetting RoughnessScale;
     BoolSetting AlwaysResetPathTrace;
     BoolSetting ShowProgressBar;
 
@@ -140,11 +144,23 @@ namespace AppSettings
         EnableNormalMaps.Initialize("EnableNormalMaps", "Debug", "Enable Normal Maps", "Enables normal maps", true);
         Settings.AddSetting(&EnableNormalMaps);
 
+        EnableDiffuse.Initialize("EnableDiffuse", "Debug", "Enable Diffuse", "Enables diffuse reflections", true);
+        Settings.AddSetting(&EnableDiffuse);
+
         EnableSpecular.Initialize("EnableSpecular", "Debug", "Enable Specular", "Enables specular reflections", true);
         Settings.AddSetting(&EnableSpecular);
 
-        ShowLightCounts.Initialize("ShowLightCounts", "Debug", "Show Light Counts", "Visualizes the light count for a pixel", false);
-        Settings.AddSetting(&ShowLightCounts);
+        EnableDirect.Initialize("EnableDirect", "Debug", "Enable Direct", "Enables direct lighting", true);
+        Settings.AddSetting(&EnableDirect);
+
+        EnableIndirect.Initialize("EnableIndirect", "Debug", "Enable Indirect", "Enables indirect lighting", true);
+        Settings.AddSetting(&EnableIndirect);
+
+        EnableIndirectSpecular.Initialize("EnableIndirectSpecular", "Debug", "Enable Indirect Specular", "Enables indirect specular reflections, it produces noisier output", false);
+        Settings.AddSetting(&EnableIndirectSpecular);
+
+        RoughnessScale.Initialize("RoughnessScale", "Debug", "Roughness Scale", "Scales the scene roughness by this value", 1.0000f, 0.0010f, 2.0000f, 0.0100f, ConversionMode::None, 1.0000f);
+        Settings.AddSetting(&RoughnessScale);
 
         AlwaysResetPathTrace.Initialize("AlwaysResetPathTrace", "Debug", "Always Reset Path Trace", "", false);
         Settings.AddSetting(&AlwaysResetPathTrace);
@@ -183,8 +199,12 @@ namespace AppSettings
         cbData.BloomBlurSigma = BloomBlurSigma;
         cbData.EnableAlbedoMaps = EnableAlbedoMaps;
         cbData.EnableNormalMaps = EnableNormalMaps;
+        cbData.EnableDiffuse = EnableDiffuse;
         cbData.EnableSpecular = EnableSpecular;
-        cbData.ShowLightCounts = ShowLightCounts;
+        cbData.EnableDirect = EnableDirect;
+        cbData.EnableIndirect = EnableIndirect;
+        cbData.EnableIndirectSpecular = EnableIndirectSpecular;
+        cbData.RoughnessScale = RoughnessScale;
 
         CBuffer.MapAndSetData(cbData);
     }

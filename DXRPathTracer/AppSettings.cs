@@ -177,11 +177,25 @@ public class Settings
         [HelpText("Enables normal maps")]
         bool EnableNormalMaps = true;
 
+        [HelpText("Enables diffuse reflections")]
+        bool EnableDiffuse = true;
+
         [HelpText("Enables specular reflections")]
         bool EnableSpecular = true;
 
-        [HelpText("Visualizes the light count for a pixel")]
-        bool ShowLightCounts = false;
+        [HelpText("Enables direct lighting")]
+        bool EnableDirect = true;
+
+        [HelpText("Enables indirect lighting")]
+        bool EnableIndirect = true;
+
+        [HelpText("Enables indirect specular reflections, it produces noisier output")]
+        bool EnableIndirectSpecular = false;
+
+        [HelpText("Scales the scene roughness by this value")]
+        [MinValue(0.001f)]
+        [MaxValue(2.0f)]
+        float RoughnessScale = 1.0f;
 
         [UseAsShaderConstant(false)]
         bool AlwaysResetPathTrace = false;
