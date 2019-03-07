@@ -7,6 +7,7 @@ struct AppSettings_Layout
     int MSAAMode;
     bool RenderLights;
     bool EnableRayTracing;
+    bool EnableAnyHitShaders;
     int SqrtNumSamples;
     int MaxPathLength;
     float Exposure;

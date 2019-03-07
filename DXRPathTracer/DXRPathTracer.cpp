@@ -753,7 +753,10 @@ void DXRPathTracer::CreateRayTracingPSOs()
         D3D12_HIT_GROUP_DESC hitDesc = { };
         hitDesc.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
         hitDesc.ClosestHitShaderImport = L"ClosestHitShader";
-        hitDesc.AnyHitShaderImport = L"AnyHitColor";
+        if (AppSettings::EnableAnyHitShaders)
+        {
+            hitDesc.AnyHitShaderImport = L"AnyHitColor";
+        }
         hitDesc.HitGroupExport = L"HitGroup";
         builder.AddSubObject(hitDesc);
     }
@@ -763,7 +766,10 @@ void DXRPathTracer::CreateRayTracingPSOs()
         D3D12_HIT_GROUP_DESC hitDesc = { };
         hitDesc.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
         hitDesc.ClosestHitShaderImport = L"ShadowHitShader";
-        hitDesc.AnyHitShaderImport = L"AnyHitShadow";
+        if (AppSettings::EnableAnyHitShaders)
+        {
+            hitDesc.AnyHitShaderImport = L"AnyHitShadow";
+        }
         hitDesc.HitGroupExport = L"ShadowHitGroup";
         builder.AddSubObject(hitDesc);
     }
@@ -771,7 +777,7 @@ void DXRPathTracer::CreateRayTracingPSOs()
     {
         D3D12_RAYTRACING_SHADER_CONFIG shaderConfig = { };
         shaderConfig.MaxAttributeSizeInBytes = 2 * sizeof(float);                      // float2 barycentrics;
-        shaderConfig.MaxPayloadSizeInBytes = 3 * sizeof(float) + 3 * sizeof(uint32);   // float3 radiance + uint pathLength + uint pixelIdx + uint setIdx
+        shaderConfig.MaxPayloadSizeInBytes = 2 * sizeof(float) + 2 * sizeof(uint32);   // float2 barycentrics + uint geometryIdx + uint primitiveIdx
         builder.AddSubObject(shaderConfig);
     }
 
@@ -805,6 +811,8 @@ void DXRPathTracer::CreateRayTracingPSOs()
         static const wchar* exports[] =
         {
             L"HitGroup",
+            L"AnyHitColor",
+            L"AnyHitShadow",
         };
 
         D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION associations = { };
@@ -822,9 +830,9 @@ void DXRPathTracer::CreateRayTracingPSOs()
     }
 
     {
-        // The path tracer is recursive, so set the max recursion depth to the max path length
+        // The path tracer is non-recursive, so set the max recursion depth to 1
         D3D12_RAYTRACING_PIPELINE_CONFIG configDesc = { };
-        configDesc.MaxTraceRecursionDepth = AppSettings::MaxPathLengthSetting;
+        configDesc.MaxTraceRecursionDepth = 1;
         builder.AddSubObject(configDesc);
     }
 
@@ -1473,7 +1481,14 @@ void DXRPathTracer::BuildRTAccelerationStructure()
         geometryDesc.Triangles.VertexCount = uint32(mesh.NumVertices());
         geometryDesc.Triangles.VertexBuffer.StartAddress = vtxBuffer.GPUAddress + mesh.VertexOffset() * vtxBuffer.Stride;
         geometryDesc.Triangles.VertexBuffer.StrideInBytes = vtxBuffer.Stride;
-        geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+        if (AppSettings::EnableAnyHitShaders)
+        {
+            geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+        }
+        else
+        {
+            geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+        }
 
         GeometryInfo& geoInfo = geoInfoBufferData[meshIdx];
         geoInfo = { };

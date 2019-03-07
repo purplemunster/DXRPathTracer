@@ -76,7 +76,7 @@ public class Settings
     public class Scene
     {
         [UseAsShaderConstant(false)]
-        Scenes CurrentScene = Scenes.SunTemple;
+        Scenes CurrentScene = Scenes.BoxTest;
 
         [HelpText("Enable or disable deferred light rendering")]
         bool RenderLights = false;
@@ -116,6 +116,7 @@ public class Settings
     public class PathTracing
     {
         bool EnableRayTracing = true;
+        bool EnableAnyHitShaders = false;
 
         [HelpText("The square root of the number of per-pixel sample rays to use for path tracing")]
         [MinValue(1)]
@@ -187,7 +188,7 @@ public class Settings
         bool EnableDirect = true;
 
         [HelpText("Enables indirect lighting")]
-        bool EnableIndirect = true;
+        bool EnableIndirect = false;
 
         [HelpText("Enables indirect specular reflections, it produces noisier output")]
         bool EnableIndirectSpecular = false;
