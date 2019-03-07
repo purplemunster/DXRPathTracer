@@ -169,3 +169,6 @@ imgui.ini
 *.sublime-workspace
 
 *.args.json
+/TexturePkg.zip
+/file.bundle
+/DXRPathTracer.bundle
