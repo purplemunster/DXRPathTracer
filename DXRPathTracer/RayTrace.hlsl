@@ -423,10 +423,8 @@ void RaygenShader()
                         radiance = 0.0f;
                     }
 
-                    if (pathLength > 1)
-                    {
-                        t *= throughput;
-                    }
+                    // Update accumulation throughput
+                    t *= throughput;
 
                     if (AppSettings.EnableIndirect && (pathLength + 1 < AppSettings.MaxPathLength))
                     {
