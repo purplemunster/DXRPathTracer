@@ -75,18 +75,34 @@ protected:
 
     // Ray tracing resources
     CompiledShaderPtr rayTraceLib;
+    CompiledShaderPtr rayTraceLibSSRT;
     RenderTexture rtTarget;
     ID3D12RootSignature* rtRootSignature = nullptr;
     ID3D12RootSignature* rtEmptyLocalRS = nullptr;
     ID3D12RootSignature* rtHitGroupLocalRS = nullptr;
-    ID3D12StateObject* rtPSO = nullptr;
-    bool buildAccelStructure = true;
+     bool buildAccelStructure = true;
     uint64 lastBuildAccelStructureFrame = uint64(-1);
     RawBuffer rtBottomLevelAccelStructure;
     RawBuffer rtTopLevelAccelStructure;
-    StructuredBuffer rtRayGenTable;
-    StructuredBuffer rtHitTable;
-    StructuredBuffer rtMissTable;
+
+    enum RtType
+    {
+        Recursive,
+        RecursiveWithAnyHit,
+        SSRT,
+        SSRTWithAnyHit,
+
+        Count
+    };
+
+    struct RtStateObject
+    {
+        ID3D12StateObject* rtPSO = nullptr;
+        StructuredBuffer rtRayGenTable;
+        StructuredBuffer rtHitTable;
+        StructuredBuffer rtMissTable;
+    } rtState[RtType::Count];
+
     StructuredBuffer rtGeoInfoBuffer;
     FirstPersonCamera rtCurrCamera;
     bool rtShouldRestartPathTrace = false;
@@ -109,7 +125,7 @@ protected:
     void InitializeScene();
 
     void InitRayTracing();
-    void CreateRayTracingPSOs();
+    void CreateRayTracingPSOs(RtStateObject* pRtStateObject, RtType type);
 
     void UpdateLights();
 

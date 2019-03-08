@@ -25,6 +25,14 @@ static const char* ClusterRasterizationModesLabels[] =
     "Conservative",
 };
 
+static const char* RtTypeLabels[] =
+{
+    "PathTracer",
+    "PathTracerWithAnyHit",
+    "SSRT",
+    "SSRTWithAnyHit",
+};
+
 namespace AppSettings
 {
     static SettingsContainer Settings;
@@ -41,7 +49,7 @@ namespace AppSettings
     IntSetting MaxLightClamp;
     ClusterRasterizationModesSetting ClusterRasterizationMode;
     BoolSetting EnableRayTracing;
-    BoolSetting EnableAnyHitShaders;
+    RtTypeSetting RayTracingType;
     IntSetting SqrtNumSamples;
     IntSetting MaxPathLength;
     FloatSetting Exposure;
@@ -103,7 +111,7 @@ namespace AppSettings
         MSAAMode.Initialize("MSAAMode", "Anti Aliasing", "MSAA Mode", "MSAA mode to use for rendering", MSAAModes::MSAA4x, 3, MSAAModesLabels);
         Settings.AddSetting(&MSAAMode);
 
-        CurrentScene.Initialize("CurrentScene", "Scene", "Current Scene", "", Scenes::Sponza, 3, ScenesLabels);
+        CurrentScene.Initialize("CurrentScene", "Scene", "Current Scene", "", Scenes::SunTemple, 3, ScenesLabels);
         Settings.AddSetting(&CurrentScene);
 
         RenderLights.Initialize("RenderLights", "Scene", "Render Lights", "Enable or disable deferred light rendering", false);
@@ -118,8 +126,8 @@ namespace AppSettings
         EnableRayTracing.Initialize("EnableRayTracing", "Path Tracing", "Enable Ray Tracing", "", true);
         Settings.AddSetting(&EnableRayTracing);
 
-        EnableAnyHitShaders.Initialize("EnableAnyHitShaders", "Path Tracing", "Enable Any Hit Shaders", "", false);
-        Settings.AddSetting(&EnableAnyHitShaders);
+        RayTracingType.Initialize("RayTracingType", "Path Tracing", "Ray Tracing Type", "", RtType::Recursive, 4, RtTypeLabels);
+        Settings.AddSetting(&RayTracingType);
 
         SqrtNumSamples.Initialize("SqrtNumSamples", "Path Tracing", "Sqrt Num Samples", "The square root of the number of per-pixel sample rays to use for path tracing", 4, 1, 100);
         Settings.AddSetting(&SqrtNumSamples);
@@ -195,7 +203,7 @@ namespace AppSettings
         cbData.MSAAMode = MSAAMode;
         cbData.RenderLights = RenderLights;
         cbData.EnableRayTracing = EnableRayTracing;
-        cbData.EnableAnyHitShaders = EnableAnyHitShaders;
+        cbData.RayTracingType = RayTracingType;
         cbData.SqrtNumSamples = SqrtNumSamples;
         cbData.MaxPathLength = MaxPathLength;
         cbData.Exposure = Exposure;

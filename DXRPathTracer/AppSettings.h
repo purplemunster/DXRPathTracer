@@ -40,6 +40,18 @@ enum class ClusterRasterizationModes
 
 typedef EnumSettingT<ClusterRasterizationModes> ClusterRasterizationModesSetting;
 
+enum class RtType
+{
+    Recursive = 0,
+    RecursiveWithAnyHit = 1,
+    SSRT = 2,
+    SSRTWithAnyHit = 3,
+
+    NumValues
+};
+
+typedef EnumSettingT<RtType> RtTypeSetting;
+
 namespace AppSettings
 {
     static const uint64 ClusterTileSize = 16;
@@ -65,7 +77,7 @@ namespace AppSettings
     extern IntSetting MaxLightClamp;
     extern ClusterRasterizationModesSetting ClusterRasterizationMode;
     extern BoolSetting EnableRayTracing;
-    extern BoolSetting EnableAnyHitShaders;
+    extern RtTypeSetting RayTracingType;
     extern IntSetting SqrtNumSamples;
     extern IntSetting MaxPathLength;
     extern FloatSetting Exposure;
@@ -93,7 +105,7 @@ namespace AppSettings
         int32 MSAAMode;
         bool32 RenderLights;
         bool32 EnableRayTracing;
-        bool32 EnableAnyHitShaders;
+        int32 RayTracingType;
         int32 SqrtNumSamples;
         int32 MaxPathLength;
         float Exposure;

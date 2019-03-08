@@ -394,10 +394,14 @@ void DXRPathTracer::Shutdown()
     DX12::Release(rtHitGroupLocalRS);
     rtBottomLevelAccelStructure.Shutdown();
     rtTopLevelAccelStructure.Shutdown();
-    rtRayGenTable.Shutdown();
-    rtHitTable.Shutdown();
-    rtMissTable.Shutdown();
     rtGeoInfoBuffer.Shutdown();
+
+    for (UINT i = 0; i < RtType::Count; ++i)
+    {
+        rtState[i].rtRayGenTable.Shutdown();
+        rtState[i].rtHitTable.Shutdown();
+        rtState[i].rtMissTable.Shutdown();
+    }
 }
 
 void DXRPathTracer::CreatePSOs()
@@ -474,7 +478,10 @@ void DXRPathTracer::CreatePSOs()
         DXCall(DX12::Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&resolvePSO)));
     }
 
-    CreateRayTracingPSOs();
+    for (UINT i = 0; i < RtType::Count; ++i)
+    {
+        CreateRayTracingPSOs(&rtState[i], (RtType)i);
+    }
 }
 
 void DXRPathTracer::DestroyPSOs()
@@ -487,7 +494,10 @@ void DXRPathTracer::DestroyPSOs()
     DX12::DeferredRelease(clusterIntersectingPSO);
     DX12::DeferredRelease(resolvePSO);
 
-    DX12::DeferredRelease(rtPSO);
+    for (UINT i = 0; i < RtType::Count; ++i)
+    {
+        DX12::DeferredRelease(rtState[i].rtPSO);
+    }
 }
 
 // Creates all required render targets
@@ -647,6 +657,7 @@ void DXRPathTracer::InitializeScene()
 void DXRPathTracer::InitRayTracing()
 {
     rayTraceLib = CompileFromFile(L"RayTrace.hlsl", nullptr, ShaderType::Library);
+    rayTraceLibSSRT = CompileFromFile(L"RayTraceSSRT.hlsl", nullptr, ShaderType::Library);
 
     {
         // RayTrace root signature
@@ -736,7 +747,8 @@ void DXRPathTracer::InitRayTracing()
     rtCurrCamera = camera;
 }
 
-void DXRPathTracer::CreateRayTracingPSOs()
+void DXRPathTracer::CreateRayTracingPSOs(
+    RtStateObject* pRtStateObject, RtType type)
 {
     StateObjectBuilder builder;
     builder.Init(10);
@@ -744,7 +756,14 @@ void DXRPathTracer::CreateRayTracingPSOs()
     {
         // DXIL library sub-object containing all of our code
         D3D12_DXIL_LIBRARY_DESC dxilDesc = { };
-        dxilDesc.DXILLibrary = rayTraceLib.ByteCode();
+        if ((type == RtType::SSRT) || (type == RtType::SSRTWithAnyHit))
+        {
+            dxilDesc.DXILLibrary = rayTraceLibSSRT.ByteCode();
+        }
+        else
+        {
+            dxilDesc.DXILLibrary = rayTraceLib.ByteCode();
+        }
         builder.AddSubObject(dxilDesc);
     }
 
@@ -753,11 +772,11 @@ void DXRPathTracer::CreateRayTracingPSOs()
         D3D12_HIT_GROUP_DESC hitDesc = { };
         hitDesc.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
         hitDesc.ClosestHitShaderImport = L"ClosestHitShader";
-        if (AppSettings::EnableAnyHitShaders)
+        hitDesc.HitGroupExport = L"HitGroup";
+        if ((type == RtType::RecursiveWithAnyHit) || (type == RtType::SSRTWithAnyHit))
         {
             hitDesc.AnyHitShaderImport = L"AnyHitColor";
         }
-        hitDesc.HitGroupExport = L"HitGroup";
         builder.AddSubObject(hitDesc);
     }
 
@@ -766,18 +785,27 @@ void DXRPathTracer::CreateRayTracingPSOs()
         D3D12_HIT_GROUP_DESC hitDesc = { };
         hitDesc.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
         hitDesc.ClosestHitShaderImport = L"ShadowHitShader";
-        if (AppSettings::EnableAnyHitShaders)
+        hitDesc.HitGroupExport = L"ShadowHitGroup";
+        if ((type == RtType::RecursiveWithAnyHit) || (type == RtType::SSRTWithAnyHit))
         {
             hitDesc.AnyHitShaderImport = L"AnyHitShadow";
         }
-        hitDesc.HitGroupExport = L"ShadowHitGroup";
         builder.AddSubObject(hitDesc);
     }
 
     {
         D3D12_RAYTRACING_SHADER_CONFIG shaderConfig = { };
         shaderConfig.MaxAttributeSizeInBytes = 2 * sizeof(float);                      // float2 barycentrics;
-        shaderConfig.MaxPayloadSizeInBytes = 2 * sizeof(float) + 2 * sizeof(uint32);   // float2 barycentrics + uint geometryIdx + uint primitiveIdx
+
+        if ((type == RtType::SSRT) || (type == RtType::SSRTWithAnyHit))
+        {
+            shaderConfig.MaxPayloadSizeInBytes = 2 * sizeof(float) + 2 * sizeof(uint32);   // float2 barycentrics + uint geometryIdx + uint primitiveIdx
+        }
+        else
+        {
+            shaderConfig.MaxPayloadSizeInBytes = 2 * sizeof(float) + 2 * sizeof(uint32);   // float2 barycentrics + uint geometryIdx + uint primitiveIdx
+        }
+
         builder.AddSubObject(shaderConfig);
     }
 
@@ -836,11 +864,11 @@ void DXRPathTracer::CreateRayTracingPSOs()
         builder.AddSubObject(configDesc);
     }
 
-    rtPSO = builder.CreateStateObject(D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE);
+    pRtStateObject->rtPSO = builder.CreateStateObject(D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE);
 
     // Get shader identifiers (for making shader records)
     ID3D12StateObjectProperties* psoProps = nullptr;
-    rtPSO->QueryInterface(IID_PPV_ARGS(&psoProps));
+    pRtStateObject->rtPSO->QueryInterface(IID_PPV_ARGS(&psoProps));
 
     const void* rayGenID = psoProps->GetShaderIdentifier(L"RaygenShader");
     const void* hitGroupID = psoProps->GetShaderIdentifier(L"HitGroup");
@@ -860,7 +888,7 @@ void DXRPathTracer::CreateRayTracingPSOs()
         sbInit.InitData = rayGenRecords;
         sbInit.ShaderTable = true;
         sbInit.Name = L"Ray Gen Shader Table";
-        rtRayGenTable.Initialize(sbInit);
+        pRtStateObject->rtRayGenTable.Initialize(sbInit);
     }
 
     {
@@ -872,7 +900,7 @@ void DXRPathTracer::CreateRayTracingPSOs()
         sbInit.InitData = missRecords;
         sbInit.ShaderTable = true;
         sbInit.Name = L"Miss Shader Table";
-        rtMissTable.Initialize(sbInit);
+        pRtStateObject->rtMissTable.Initialize(sbInit);
     }
 
     {
@@ -892,7 +920,7 @@ void DXRPathTracer::CreateRayTracingPSOs()
         sbInit.InitData = hitGroupRecords.Data();
         sbInit.ShaderTable = true;
         sbInit.Name = L"Hit Shader Table";
-        rtHitTable.Initialize(sbInit);
+        pRtStateObject->rtHitTable.Initialize(sbInit);
     }
 
     DX12::Release(psoProps);
@@ -986,6 +1014,7 @@ void DXRPathTracer::Update(const Timer& timer)
         &AppSettings::Turbidity,
         &AppSettings::GroundAlbedo,
         &AppSettings::RoughnessScale,
+        &AppSettings::RayTracingType
     };
 
     for(const Setting* setting : settingsToCheck)
@@ -1370,12 +1399,12 @@ void DXRPathTracer::RenderRayTracing()
 
     rtTarget.MakeWritableUAV(cmdList);
 
-    cmdList->SetPipelineState1(rtPSO);
+    cmdList->SetPipelineState1(rtState[AppSettings::RayTracingType].rtPSO);
 
     D3D12_DISPATCH_RAYS_DESC dispatchDesc = {};
-    dispatchDesc.HitGroupTable = rtHitTable.ShaderTable();
-    dispatchDesc.MissShaderTable = rtMissTable.ShaderTable();
-    dispatchDesc.RayGenerationShaderRecord = rtRayGenTable.ShaderRecord(0);
+    dispatchDesc.HitGroupTable = rtState[AppSettings::RayTracingType].rtHitTable.ShaderTable();
+    dispatchDesc.MissShaderTable = rtState[AppSettings::RayTracingType].rtMissTable.ShaderTable();
+    dispatchDesc.RayGenerationShaderRecord = rtState[AppSettings::RayTracingType].rtRayGenTable.ShaderRecord(0);
     dispatchDesc.Width = uint32(rtTarget.Width());
     dispatchDesc.Height = uint32(rtTarget.Height());
     dispatchDesc.Depth = 1;
@@ -1481,14 +1510,9 @@ void DXRPathTracer::BuildRTAccelerationStructure()
         geometryDesc.Triangles.VertexCount = uint32(mesh.NumVertices());
         geometryDesc.Triangles.VertexBuffer.StartAddress = vtxBuffer.GPUAddress + mesh.VertexOffset() * vtxBuffer.Stride;
         geometryDesc.Triangles.VertexBuffer.StrideInBytes = vtxBuffer.Stride;
-        if (AppSettings::EnableAnyHitShaders)
-        {
-            geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-        }
-        else
-        {
-            geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-        }
+
+        ///TODO: Should probably rebuild acceleration structures with OPAQUE flag if anyhit is disabled.
+        geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 
         GeometryInfo& geoInfo = geoInfoBufferData[meshIdx];
         geoInfo = { };

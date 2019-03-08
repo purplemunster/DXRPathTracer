@@ -7,7 +7,7 @@ struct AppSettings_Layout
     int MSAAMode;
     bool RenderLights;
     bool EnableRayTracing;
-    bool EnableAnyHitShaders;
+    int RayTracingType;
     int SqrtNumSamples;
     int MaxPathLength;
     float Exposure;
@@ -38,6 +38,11 @@ static const int ClusterRasterizationModes_Normal = 0;
 static const int ClusterRasterizationModes_MSAA4x = 1;
 static const int ClusterRasterizationModes_MSAA8x = 2;
 static const int ClusterRasterizationModes_Conservative = 3;
+
+static const int RtType_Recursive = 0;
+static const int RtType_RecursiveWithAnyHit = 1;
+static const int RtType_SSRT = 2;
+static const int RtType_SSRTWithAnyHit = 3;
 
 static const uint ClusterTileSize = 16;
 static const uint NumZTiles = 16;

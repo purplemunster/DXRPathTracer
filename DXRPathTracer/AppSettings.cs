@@ -5,6 +5,18 @@ enum Scenes
     BoxTest,
 }
 
+enum RtType
+{
+    [EnumLabel("PathTracer")]
+    Recursive = 0,
+    [EnumLabel("PathTracerWithAnyHit")]
+    RecursiveWithAnyHit,
+    [EnumLabel("SSRT")]
+    SSRT,
+    [EnumLabel("SSRTWithAnyHit")]
+    SSRTWithAnyHit,
+}
+
 enum MSAAModes
 {
     [EnumLabel("None")]
@@ -76,7 +88,7 @@ public class Settings
     public class Scene
     {
         [UseAsShaderConstant(false)]
-        Scenes CurrentScene = Scenes.Sponza;
+        Scenes CurrentScene = Scenes.SunTemple;
 
         [HelpText("Enable or disable deferred light rendering")]
         bool RenderLights = false;
@@ -116,7 +128,8 @@ public class Settings
     public class PathTracing
     {
         bool EnableRayTracing = true;
-        bool EnableAnyHitShaders = false;
+
+        RtType RayTracingType = RtType.Recursive;
 
         [HelpText("The square root of the number of per-pixel sample rays to use for path tracing")]
         [MinValue(1)]
