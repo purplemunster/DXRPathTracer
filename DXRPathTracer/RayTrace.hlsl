@@ -313,8 +313,11 @@ void RaygenShader()
 
     PrimaryPayload payload;
 
-    while (pathLength <= 3)
+    while (pathLength <= AppSettings.MaxPathLength)
     {
+        float3 radiance = 0.0;
+        float3 t        = float3(1.0f, 1.0f, 1.0f);
+
         // Trace next sample on ray
         const uint hitGroupOffset        = RayTypeRadiance;
         const uint hitGroupGeoMultiplier = NumRayTypes;
@@ -327,8 +330,6 @@ void RaygenShader()
             MeshVertex hitSurface;
             Material   material;
             ProcessHit(payload, hitSurface, material);
-
-            float3 radiance = 0.0;
 
             if ((!AppSettings.EnableDiffuse && !AppSettings.EnableSpecular) ||
                 (!AppSettings.EnableDirect && !AppSettings.EnableIndirect))
@@ -385,7 +386,7 @@ void RaygenShader()
                     const float roughness = sqrtRoughness * sqrtRoughness;
 
                     Texture2D emissiveMap = Tex2DTable[NonUniformResourceIndex(material.Emissive)];
-                    float3 radiance = emissiveMap.SampleLevel(MeshSampler, hitSurface.UV, 0.0f).xyz;
+                    radiance = emissiveMap.SampleLevel(MeshSampler, hitSurface.UV, 0.0f).xyz;
 
                     if (AppSettings.EnableSun)
                     {
@@ -409,8 +410,6 @@ void RaygenShader()
                             roughness, positionWS, incomingRayOriginWS) * visibility;
                     }
 
-                    accumRadiance = radiance;
-
                     float3 throughput = 0.0f;
 
                     ImportanceSampleBRDF(
@@ -421,10 +420,14 @@ void RaygenShader()
                         radiance = 0.0f;
                     }
 
-                    if (AppSettings.EnableIndirect)
+                    if (pathLength > 1)
                     {
-                        pathLength++;
-                        accumRadiance += radiance * throughput;
+                        t *= throughput;
+                    }
+
+                    if (AppSettings.EnableIndirect && (pathLength + 1 < AppSettings.MaxPathLength))
+                    {
+                        radiance = radiance * t;
                     }
                     else
                     {
@@ -433,17 +436,28 @@ void RaygenShader()
                         TextureCube skyTexture = TexCubeTable[RayTraceCB.SkyTextureIdx];
                         float3 skyRadiance = skyTexture.SampleLevel(LinearSampler, ray.Direction, 0.0f).xyz;
 
-                        accumRadiance += visibility * skyRadiance * throughput;
-
-                        break;
+                        radiance += visibility * skyRadiance * t;
                     }
                 }
+            }
+
+            // Accumulate radiance
+            accumRadiance += radiance;
+
+            if (AppSettings.EnableIndirect)
+            {
+                // Move to next path
+                pathLength++;
+            }
+            else
+            {
+                break;
             }
         }
         else
         {
             TextureCube skyTexture = TexCubeTable[RayTraceCB.SkyTextureIdx];
-            float3 radiance = skyTexture.SampleLevel(LinearSampler, ray.Direction, 0.0f).xyz;
+            radiance = skyTexture.SampleLevel(LinearSampler, ray.Direction, 0.0f).xyz;
 
             if (pathLength == 1)
             {
@@ -454,7 +468,9 @@ void RaygenShader()
                 }
             }
 
+            // Accumulate radiance
             accumRadiance += radiance;
+
             break;
         }
     }
