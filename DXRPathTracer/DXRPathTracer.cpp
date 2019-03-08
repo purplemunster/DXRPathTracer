@@ -803,7 +803,7 @@ void DXRPathTracer::CreateRayTracingPSOs(
         }
         else
         {
-            shaderConfig.MaxPayloadSizeInBytes = 2 * sizeof(float) + 2 * sizeof(uint32);   // float2 barycentrics + uint geometryIdx + uint primitiveIdx
+            shaderConfig.MaxPayloadSizeInBytes = 3 * sizeof(float) + 3 * sizeof(uint32);   // float2 Radiance + uint pathLength + uint pixelIdx + uint sampleSetIdx
         }
 
         builder.AddSubObject(shaderConfig);
@@ -860,7 +860,15 @@ void DXRPathTracer::CreateRayTracingPSOs(
     {
         // The path tracer is non-recursive, so set the max recursion depth to 1
         D3D12_RAYTRACING_PIPELINE_CONFIG configDesc = { };
-        configDesc.MaxTraceRecursionDepth = 1;
+        if ((type == RtType::SSRT) || (type == RtType::SSRTWithAnyHit))
+        {
+            configDesc.MaxTraceRecursionDepth = 1;
+        }
+        else
+        {
+            configDesc.MaxTraceRecursionDepth = AppSettings::MaxPathLengthSetting;
+        }
+
         builder.AddSubObject(configDesc);
     }
 
