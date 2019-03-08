@@ -423,21 +423,27 @@ void RaygenShader()
                         radiance = 0.0f;
                     }
 
-                    // Update accumulation throughput
-                    t *= throughput;
-
                     if (AppSettings.EnableIndirect && (pathLength + 1 < AppSettings.MaxPathLength))
                     {
+                        // Accumulate radiance
                         accumRadiance += radiance * t;
+
+                        // Update accumulation throughput
+                        t *= throughput;
                     }
                     else
                     {
+                        // Query visibility
                         const float visibility = QueryVisibility(ray.Origin, ray.Direction);
 
+                        // Sample cubemap radiance
                         TextureCube skyTexture = TexCubeTable[RayTraceCB.SkyTextureIdx];
                         float3 skyRadiance = skyTexture.SampleLevel(LinearSampler, ray.Direction, 0.0f).xyz;
 
-                        accumRadiance += radiance + (visibility * skyRadiance * t);
+                        // Accumulate radiance
+                        accumRadiance += (radiance + (visibility * skyRadiance * throughput)) * t;
+
+                        // End path as we have reached maximum path length
                         break;
                     }
                 }
