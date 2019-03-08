@@ -190,7 +190,7 @@ void AnyHitShadow(inout ShadowPayload payload, in HitAttributes attr)
 }
 
 void ImportanceSampleBRDF(
-    in float3x3 tangentToWorld, in float3 positionWS, in uint pixelIdx, in uint sampleSetIdx, in bool enableSpecular, in bool enableDiffuse, in float roughness, in float3 diffuseAlbedo, in float3 specularAlbedo,
+    in float3x3 tangentToWorld, in float3 positionWS, in uint pixelIdx, inout uint sampleSetIdx, in bool enableSpecular, in bool enableDiffuse, in float roughness, in float3 diffuseAlbedo, in float3 specularAlbedo,
     inout RayDesc ray,
     out float3 throughput)
 {
@@ -309,24 +309,27 @@ void RaygenShader()
     ray.TMax      = rayLength;
 
     float3 accumRadiance = 0.0f;
-    uint pathLength = 1;
+    uint pathLength = 0;
 
-    PrimaryPayload payload;
+    float3 t = float3(1.0f, 1.0f, 1.0f);
 
-    while (pathLength <= AppSettings.MaxPathLength)
+    while (pathLength < AppSettings.MaxPathLength)
     {
         float3 radiance = 0.0;
-        float3 t        = float3(1.0f, 1.0f, 1.0f);
 
         // Trace next sample on ray
         const uint hitGroupOffset        = RayTypeRadiance;
         const uint hitGroupGeoMultiplier = NumRayTypes;
         const uint missShaderIdx         = RayTypeRadiance;
 
+        PrimaryPayload payload;
         TraceRay(Scene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFFFFFFFF, hitGroupOffset, hitGroupGeoMultiplier, missShaderIdx, ray, payload);
 
         if (payload.GeometryIdx != 0xFFFFFFFF)
         {
+            // Update path length
+            pathLength++;
+
             MeshVertex hitSurface;
             Material   material;
             ProcessHit(payload, hitSurface, material);
@@ -427,7 +430,7 @@ void RaygenShader()
 
                     if (AppSettings.EnableIndirect && (pathLength + 1 < AppSettings.MaxPathLength))
                     {
-                        radiance = radiance * t;
+                        accumRadiance += radiance * t;
                     }
                     else
                     {
@@ -436,20 +439,13 @@ void RaygenShader()
                         TextureCube skyTexture = TexCubeTable[RayTraceCB.SkyTextureIdx];
                         float3 skyRadiance = skyTexture.SampleLevel(LinearSampler, ray.Direction, 0.0f).xyz;
 
-                        radiance += visibility * skyRadiance * t;
+                        accumRadiance += radiance + (visibility * skyRadiance * t);
+                        break;
                     }
                 }
             }
 
-            // Accumulate radiance
-            accumRadiance += radiance;
-
-            if (AppSettings.EnableIndirect)
-            {
-                // Move to next path
-                pathLength++;
-            }
-            else
+            if (!AppSettings.EnableIndirect)
             {
                 break;
             }
@@ -469,7 +465,7 @@ void RaygenShader()
             }
 
             // Accumulate radiance
-            accumRadiance += radiance;
+            accumRadiance += (radiance * t);
 
             break;
         }
